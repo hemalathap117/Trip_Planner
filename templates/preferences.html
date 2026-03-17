@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submit Preferences - AI Trip Planner</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+
+<div class="page">
+
+<header class="header">
+<div class="logo">
+<span class="logo-icon"></span>
+<h1>AI Trip Planner</h1>
+</div>
+<p class="tagline">Trip: <strong>{{ trip.name }}</strong></p>
+<p style="font-size: 16px; opacity: 0.9; margin-top: 8px;">
+Organizer: {{ trip.organiser_name }} | Join Code: <strong>{{ join_code }}</strong>
+</p>
+</header>
+
+<div class="main-container">
+<div class="preferences-wrapper">
+
+<div class="card preferences-card">
+<div class="card-header">
+<span class="card-icon"></span>
+<h2>Your Preferences</h2>
+</div>
+<p class="card-description">Help us plan your perfect trip together</p>
+
+<form class="preferences-form">
+
+<div class="form-group">
+<label for="participantName">Your Name</label>
+<input type="text" id="participantName" placeholder="Enter your name" required>
+<span class="error" id="nameError"></span>
+</div>
+
+<div class="form-group">
+<label for="budget">Budget Level</label>
+<select id="budget" required>
+<option value="">Select your budget preference</option>
+<option value="low"> Low - Budget friendly</option>
+<option value="medium"> Medium - Comfortable</option>
+<option value="high"> High - Luxury experience</option>
+<span class="error" id="budgetError"></span>
+</select>
+</div>
+
+<div class="form-row">
+<div class="form-group">
+<label for="dateFrom">From Date</label>
+<input type="date" id="dateFrom" required>
+</div>
+<div class="form-group">
+<label for="dateTo">To Date</label>
+<input type="date" id="dateTo" required>
+<div id="dateError" class="error-message">To date cannot be before from date</div>
+</div>
+</div>
+
+<div class="form-group">
+<label class="interests-label">What interests you? (Select all that apply)</label>
+<div class="interests-grid">
+<label class="interest-item">
+<input type="checkbox" value="hiking">
+<span class="interest-text"> Hiking & Nature</span>
+</label>
+<label class="interest-item">
+<input type="checkbox" value="museums">
+<span class="interest-text"> Museums & Culture</span>
+</label>
+<label class="interest-item">
+<input type="checkbox" value="food">
+<span class="interest-text"> Food & Dining</span>
+</label>
+<label class="interest-item">
+<input type="checkbox" value="shopping">
+<span class="interest-text"> Shopping</span>
+</label>
+<label class="interest-item">
+<input type="checkbox" value="beach">
+<span class="interest-text"> Beach & Water</span>
+</label>
+<label class="interest-item">
+<input type="checkbox" value="adventure">
+<span class="interest-text"> Adventure Sports</span>
+</label>
+</div>
+</div>
+
+<button class="primary-btn" type="button" onclick="submitPreferences()">
+<span class="btn-text">Submit My Preferences</span>
+<span class="btn-icon">→</span>
+</button>
+
+</form>
+
+<div id="submitResult" class="result"></div>
+
+</div>
+
+</div>
+</div>
+
+<footer class="footer">
+<p> AI Trip Planner · Plan better, together</p>
+</footer>
+
+</div>
+
+<div id="snackbar" class="snackbar"></div>
+<script src="/static/js/app.js"></script>
+
+</body>
+</html>

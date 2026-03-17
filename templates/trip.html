@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voyager — Trip Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="trip-page">
+<div class="container-sm" style="max-width:720px;">
+
+  <!-- Back -->
+  <div class="back-btn">
+    <a href="/" class="btn btn-ghost">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Home
+    </a>
+  </div>
+
+  <!-- Not-found state (hidden by default, shown by JS if API 404) -->
+  <div id="notFoundState" style="display:none; text-align:center; padding:4rem 0;">
+    <div class="card card-elevated" style="max-width:360px;margin:0 auto;">
+      <div class="card-full space-y" style="text-align:center;">
+        <p style="font-size:1.125rem;font-family:var(--font-head);font-weight:700;">Trip not found</p>
+        <p style="font-size:0.875rem;color:var(--muted-fg);">Check your join code and try again.</p>
+        <a href="/" class="btn btn-primary btn-w100">Go Home</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content (shown once data loads) -->
+  <div id="tripContent" style="display:none;">
+
+    <!-- Header -->
+    <div class="trip-header">
+      <div class="trip-header-row">
+        <div>
+          <h1 id="tripName"></h1>
+          <p class="trip-header-meta" id="tripOrg"></p>
+        </div>
+        <div id="statusBadge"></div>
+      </div>
+      <!-- Join code bar -->
+      <div class="join-code-bar">
+        <span class="label">Join Code:</span>
+        <span class="code" id="tripJoinCode"></span>
+        <button class="btn-icon" id="copyBarBtn" onclick="copyCode()">
+          <svg id="copyBarIcon" class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Shareable link bar -->
+      <div class="join-code-bar" style="margin-top: 0.5rem;">
+        <span class="label">Share Link:</span>
+        <span class="code" id="tripShareLink" style="font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis;"></span>
+        <button class="btn-icon" id="copyLinkBtn" onclick="copyLink()">
+          <svg id="copyLinkIcon" class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── COLLECTING PHASE ──────────────────────────── -->
+    <div id="phaseCollecting" style="display:none;" class="space-y">
+
+      <!-- Preferences card -->
+      <div class="card">
+        <div class="card-header-row">
+          <span class="card-title" id="prefCount">Preferences (0)</span>
+          <button class="btn btn-outline btn-sm" onclick="togglePrefForm()">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg>
+            Add Yours
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="prefList"><div class="empty-state">No preferences yet. Share the join code and add yours!</div></div>
+        </div>
+      </div>
+
+      <!-- Preference form (collapsible) -->
+      <div class="collapsible" id="prefFormWrap">
+        <div class="card mt-2">
+          <div class="card-header"><span class="card-title">Add Your Preferences</span></div>
+          <div class="card-body space-y">
+            <div class="field">
+              <label for="pfName">Your name</label>
+              <input class="input" id="pfName" type="text" placeholder="e.g. Jordan" />
+            </div>
+            <div class="field">
+              <label for="pfBudget">Budget</label>
+              <select class="input" id="pfBudget">
+                <option value="low">Low &mdash; Budget-friendly</option>
+                <option value="medium" selected>Medium &mdash; Moderate</option>
+                <option value="high">High &mdash; Luxury</option>
+              </select>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label for="pfDateFrom">From</label>
+                <input class="input" id="pfDateFrom" type="date" />
+              </div>
+              <div class="field">
+                <label for="pfDateTo">To</label>
+                <input class="input" id="pfDateTo" type="date" />
+              </div>
+            </div>
+            <div class="field">
+              <label>Interests</label>
+              <div class="interests-grid" id="interestsGrid"></div>
+            </div>
+            <button class="btn btn-accent btn-w100" onclick="submitPreferences()">Submit Preferences</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Generate button -->
+      <button class="btn btn-primary btn-w100 btn-lg" id="generateBtn" onclick="generateRecs()" disabled>
+        <svg class="icon-sm spinner" id="generateSpinner" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        <svg class="icon-sm" id="sparklesIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/>
+        </svg>
+        Generate AI Recommendations
+      </button>
+    </div>
+
+    <!-- ── GENERATING PHASE ──────────────────────────── -->
+    <div id="phaseGenerating" style="display:none;" class="generating-state">
+      <svg class="icon-xl spinner" style="color:var(--primary);margin:0 auto;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <h2>Generating recommendations...</h2>
+      <p>Our AI is finding the perfect destinations for your group.</p>
+    </div>
+
+    <!-- ── VOTING PHASE ──────────────────────────────── -->
+    <div id="phaseVoting" style="display:none;" class="space-y">
+      <div id="recCards"></div>
+
+      <!-- Vote form -->
+      <div class="card" id="voteFormCard">
+        <div class="card-body space-y">
+          <div class="field">
+            <label for="voterName">Your name</label>
+            <input class="input" id="voterName" type="text" placeholder="e.g. Jordan" />
+          </div>
+          <button class="btn btn-primary btn-w100" id="castVoteBtn" onclick="castVote()" disabled>
+            Cast Your Vote
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-outline btn-w100" onclick="closeVoting()">
+        Close Voting &amp; Reveal Winner
+      </button>
+    </div>
+
+    <!-- ── CLOSED / RESULTS PHASE ────────────────────── -->
+    <div id="phaseClosed" style="display:none;" class="space-y">
+
+      <!-- Winner card -->
+      <div id="winnerCard" class="winner-card">
+        <div class="winner-banner">
+          <svg class="icon-md" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+          <span>Winner!</span>
+        </div>
+        <div class="winner-body" id="winnerBody"></div>
+      </div>
+
+      <!-- All results -->
+      <h3 style="font-size:1.0625rem;font-weight:600;color:var(--muted-fg);">All Results</h3>
+      <div id="allResults"></div>
+
+      <!-- Vote summary -->
+      <div class="card">
+        <div class="card-body">
+          <h4 style="font-family:var(--font-head);font-weight:600;margin-bottom:0.75rem;">Vote Summary</h4>
+          <div id="voteSummary"></div>
+          <p style="font-size:0.75rem;color:var(--muted-fg);margin-top:0.75rem;" id="totalVotesLabel"></p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tripContent -->
+
+</div><!-- /container-sm -->
+
+<div id="toast-container"></div>
+<script>
+  // Pass join code from URL path
+  const JOIN_CODE = location.pathname.split('/').pop();
+</script>
+<script src="/static/js/trip.js"></script>
+</body>
+</html>
