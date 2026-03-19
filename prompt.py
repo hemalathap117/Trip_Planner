@@ -41,9 +41,14 @@ Their aggregated preferences are:
 Suggest exactly 3 travel destinations that suit this group's preferences.
 Consider their budget level, interests, and group size when making recommendations.
 
-Respond in JSON only, with this exact structure:
-[{{"name": "Destination Name", "rationale": "Brief explanation why this destination suits the group"}}, ...]
+IMPORTANT: You must respond with ONLY a valid JSON array. No other text before or after.
+Use this EXACT format:
+[
+  {{"name": "Paris, France", "rationale": "Perfect for culture and food lovers with medium budget"}},
+  {{"name": "Bali, Indonesia", "rationale": "Great beaches and affordable luxury"}},
+  {{"name": "Barcelona, Spain", "rationale": "Combines beach, culture, and amazing cuisine"}}
+]
 
-Make sure each destination is different and caters to their stated interests and budget level."""
+Now provide your 3 destination recommendations in the same JSON array format:"""
 
     return prompt
