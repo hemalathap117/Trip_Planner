@@ -418,7 +418,7 @@ async def cast_vote(join_code: str, vote: VoteSubmit, db: Session = Depends(get_
         Vote.trip_id == trip.id, Vote.participant_name == vote.participant_name
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="You already voted on this trip")
+        raise HTTPException(status_code=409, detail="You already voted on this trip")
 
     try:
         rec_id = uuid.UUID(vote.recommendation_id)
@@ -446,16 +446,28 @@ async def close_voting(join_code: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Trip is not in voting phase")
 
     recs  = db.query(Recommendation).filter(Recommendation.trip_id == trip.id).all()
-    votes = db.query(Vote).filter(Vote.trip_id == trip.id).all()
+    votes = db.query(Vote).filter(Vote.trip_id == trip.id).order_by(Vote.created_at).all()
 
-    # Determine winner
-    vote_counts = {str(r.id): 0 for r in recs}
+    # Determine winner with tie-breaking by first vote
+    vote_counts = {str(r.id): [] for r in recs}  # Store list of vote timestamps
     for v in votes:
         key = str(v.recommendation_id)
         if key in vote_counts:
-            vote_counts[key] += 1
+            vote_counts[key].append(v.created_at)
 
-    winner_id = max(vote_counts, key=vote_counts.get) if vote_counts else None
+    # Find winner: highest count, ties broken by earliest first vote
+    winner_id = None
+    max_count = 0
+    earliest_vote = None
+    
+    for rec_id, vote_times in vote_counts.items():
+        count = len(vote_times)
+        first_vote = min(vote_times) if vote_times else None
+        
+        if count > max_count or (count == max_count and first_vote and (not earliest_vote or first_vote < earliest_vote)):
+            max_count = count
+            winner_id = rec_id
+            earliest_vote = first_vote
 
     for rec in recs:
         rec.is_winner = (str(rec.id) == winner_id)
@@ -463,6 +475,7 @@ async def close_voting(join_code: str, db: Session = Depends(get_db)):
     trip.status = "closed"
     db.commit()
     return {"message": "Voting closed", "winner_id": winner_id}
+
 
 # API Specification Compliant Endpoints - Additional
 @app.post("/trips/{trip_id}/recommendations")
@@ -586,7 +599,7 @@ async def cast_trip_vote_api(trip_id: str, vote: VoteSubmit, db: Session = Depen
         Vote.trip_id == trip_uuid, Vote.participant_name == vote.participant_name
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="You already voted on this trip")
+        raise HTTPException(status_code=409, detail="You already voted on this trip")
 
     try:
         rec_id = uuid.UUID(vote.recommendation_id)
@@ -660,17 +673,29 @@ async def close_trip_voting_api(trip_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Trip is not in voting phase")
 
     recs = db.query(Recommendation).filter(Recommendation.trip_id == trip_uuid).all()
-    votes = db.query(Vote).filter(Vote.trip_id == trip_uuid).all()
+    votes = db.query(Vote).filter(Vote.trip_id == trip_uuid).order_by(Vote.created_at).all()
 
-    # Determine winner
-    vote_counts = {str(r.id): 0 for r in recs}
+    # Determine winner with tie-breaking by first vote
+    vote_counts = {str(r.id): [] for r in recs}  # Store list of vote timestamps
     for v in votes:
         key = str(v.recommendation_id)
         if key in vote_counts:
-            vote_counts[key] += 1
+            vote_counts[key].append(v.created_at)
 
-    winner_id = max(vote_counts, key=vote_counts.get) if vote_counts else None
+    # Find winner: highest count, ties broken by earliest first vote
+    winner_id = None
+    max_count = 0
+    earliest_vote = None
     winner_rec = None
+    
+    for rec_id, vote_times in vote_counts.items():
+        count = len(vote_times)
+        first_vote = min(vote_times) if vote_times else None
+        
+        if count > max_count or (count == max_count and first_vote and (not earliest_vote or first_vote < earliest_vote)):
+            max_count = count
+            winner_id = rec_id
+            earliest_vote = first_vote
 
     for rec in recs:
         is_winner = (str(rec.id) == winner_id)
@@ -688,7 +713,7 @@ async def close_trip_voting_api(trip_id: str, db: Session = Depends(get_db)):
             "id": str(winner_rec.id),
             "destination_name": winner_rec.destination_name,
             "rationale": winner_rec.rationale,
-            "vote_count": vote_counts.get(winner_id, 0)
+            "vote_count": len(vote_counts.get(winner_id, []))
         } if winner_rec else None,
         "total_votes": len(votes),
         "message": "Voting closed successfully"
