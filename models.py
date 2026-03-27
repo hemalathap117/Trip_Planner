@@ -42,7 +42,7 @@ class Recommendation(Base):
     destination_name = Column(String(120))
     rationale = Column(Text)  # LLM-generated explanation
     is_winner = Column(Boolean, default=False)
-    # created_at = Column(TIMESTAMP, server_default="now()")
+    created_at = Column(TIMESTAMP, server_default="now()")
 
 
 class Vote(Base):

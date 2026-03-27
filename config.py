@@ -12,8 +12,8 @@ class Settings:
     
     # Ollama/LLM settings
     OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
-    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
-    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "30"))
+    OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2")
+    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "120"))
     
     # Application settings
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
