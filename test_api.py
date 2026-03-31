@@ -13,9 +13,10 @@ from main import app, get_db
 from database import Base
 from models import Trip, Preference, Recommendation, Vote
 
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# Test database setup - Use PostgreSQL to match production
+# This requires docker-compose.test.yml to be running
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:root@localhost:5433/trip_planner_test"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def override_get_db():
@@ -64,6 +65,32 @@ def trip_with_preferences(client, sample_trip):
         assert response.status_code == 200
     
     return sample_trip
+
+@pytest.fixture
+def trip_with_recommendations(client, trip_with_preferences):
+    """Create a trip with mock recommendations"""
+    db = next(override_get_db())
+    trip = db.query(Trip).filter(Trip.join_code == trip_with_preferences["join_code"]).first()
+    
+    # Manually create recommendations (bypassing LLM)
+    recommendations = [
+        Recommendation(trip_id=trip.id, destination_name="Paris", rationale="Great culture"),
+        Recommendation(trip_id=trip.id, destination_name="Tokyo", rationale="Amazing food"),
+        Recommendation(trip_id=trip.id, destination_name="Bali", rationale="Beautiful beaches")
+    ]
+    for rec in recommendations:
+        db.add(rec)
+    
+    # Update trip status to voting
+    trip.status = "voting"
+    db.commit()
+    
+    # Get recommendation IDs
+    recs = db.query(Recommendation).filter(Recommendation.trip_id == trip.id).all()
+    trip_with_preferences["recommendation_ids"] = [str(r.id) for r in recs]
+    
+    db.close()
+    return trip_with_preferences
 
 
 # ==================== TRIP CREATION TESTS ====================
@@ -206,14 +233,17 @@ class TestRecommendations:
         """Error case: Generate when not in collecting phase"""
         join_code = trip_with_preferences["join_code"]
         
-        # First generation (should succeed)
-        # Note: This will fail in test without mocking LLM, but tests the status check
-        response = client.post(f"/generate/{join_code}")
-        # Status will be 'generating' or error, but not 'collecting'
+        # Change trip status to 'generating' manually
+        db = next(override_get_db())
+        trip = db.query(Trip).filter(Trip.join_code == join_code).first()
+        trip.status = "generating"
+        db.commit()
+        db.close()
         
-        # Try again (should fail due to status)
-        response2 = client.post(f"/generate/{join_code}")
-        assert response2.status_code == 400
+        # Try to generate (should fail due to status)
+        response = client.post(f"/generate/{join_code}")
+        assert response.status_code == 400
+        assert "not in collecting phase" in response.json()["detail"].lower()
 
     def test_get_recommendations(self, client):
         """Happy path: Get recommendations for a trip"""
@@ -242,31 +272,6 @@ class TestRecommendations:
 # ==================== VOTING TESTS ====================
 
 class TestVoting:
-    @pytest.fixture
-    def trip_with_recommendations(self, client, trip_with_preferences):
-        """Create a trip with mock recommendations"""
-        db = next(override_get_db())
-        trip = db.query(Trip).filter(Trip.join_code == trip_with_preferences["join_code"]).first()
-        
-        # Manually create recommendations (bypassing LLM)
-        recommendations = [
-            Recommendation(trip_id=trip.id, destination_name="Paris", rationale="Great culture"),
-            Recommendation(trip_id=trip.id, destination_name="Tokyo", rationale="Amazing food"),
-            Recommendation(trip_id=trip.id, destination_name="Bali", rationale="Beautiful beaches")
-        ]
-        for rec in recommendations:
-            db.add(rec)
-        
-        # Update trip status to voting
-        trip.status = "voting"
-        db.commit()
-        
-        # Get recommendation IDs
-        recs = db.query(Recommendation).filter(Recommendation.trip_id == trip.id).all()
-        trip_with_preferences["recommendation_ids"] = [str(r.id) for r in recs]
-        
-        db.close()
-        return trip_with_preferences
 
     def test_cast_vote_success(self, client, trip_with_recommendations):
         """Happy path: Cast a valid vote"""

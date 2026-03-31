@@ -1,38 +1,16 @@
 version: "3.9"
 
 services:
-  postgres:
+  postgres_test:
     image: postgres:15
     environment:
-      POSTGRES_DB: trip_planner
+      POSTGRES_DB: trip_planner_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Different port to avoid conflict with main DB
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      OLLAMA_HOST: 0.0.0.0
-
-  app:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - ollama
-    environment:
-      - DATABASE_URL=postgresql://postgres:root@postgres:5432/trip_planner
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama3.2:1b
+      - postgres_test_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
-  ollama_data:
+  postgres_test_data:
